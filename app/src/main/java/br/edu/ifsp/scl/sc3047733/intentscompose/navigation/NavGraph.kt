@@ -5,7 +5,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import br.edu.ifsp.scl.sc3047733.intentscompose.ui.screens.addword.AddWordScreen
 import br.edu.ifsp.scl.sc3047733.intentscompose.ui.screens.home.HomeScreen
@@ -15,25 +14,24 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
 
     var currentText by rememberSaveable { mutableStateOf("") }
 
-    val backStackEntry by navController.currentBackStackEntryAsState()
-
-    LaunchedEffect(backStackEntry) {
-        val savedStateHandle = backStackEntry?.savedStateHandle
-        val novaPalavra = savedStateHandle?.get<String>(Routes.RESULT_KEY)
-
-        if (novaPalavra != null) {
-            currentText = if (currentText.isEmpty()) {
-                novaPalavra
-            } else {
-                "$currentText $novaPalavra"
-            }
-            savedStateHandle.remove<String>(Routes.RESULT_KEY)
-        }
-    }
-
     NavHost(navController = navController, startDestination = Routes.Home.route) {
 
-        composable(Routes.Home.route) {
+        composable(Routes.Home.route) { entry ->
+            val novaPalavra by entry.savedStateHandle
+                .getStateFlow(Routes.RESULT_KEY, "")
+                .collectAsState()
+
+            LaunchedEffect(novaPalavra) {
+                if (novaPalavra.isNotEmpty()) {
+                    currentText = if (currentText.isEmpty()) {
+                        novaPalavra
+                    } else {
+                        "$currentText $novaPalavra"
+                    }
+                    entry.savedStateHandle[Routes.RESULT_KEY] = ""
+                }
+            }
+
             HomeScreen(
                 currentText = currentText,
                 onAddWordClick = {
